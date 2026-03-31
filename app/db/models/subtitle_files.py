@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, ForeignKey
+from sqlalchemy import Column, Integer, String, ForeignKey, Boolean, DateTime
 from sqlalchemy.orm import relationship
 from app.db.base import Base
 
@@ -11,5 +11,10 @@ class SubtitleFile(Base):
     language = Column(String, nullable=True)
     hash = Column(String, nullable=True)
 
+    # Incremental scanning fields
+    last_scanned_at = Column(DateTime, nullable=True)
+    exists_on_disk = Column(Boolean, default=True)
+
+    # Relationship back to media
     media_id = Column(Integer, ForeignKey("media_files.id"))
     media = relationship("MediaFile", back_populates="subtitles")

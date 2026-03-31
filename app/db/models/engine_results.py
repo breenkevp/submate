@@ -11,29 +11,18 @@ from datetime import datetime
 from app.db.base import Base
 
 
-class Pairing(Base):
-    __tablename__ = "pairings"
+class EngineResult(Base):
+    __tablename__ = "engine_results"
 
     id = Column(Integer, primary_key=True, index=True)
 
-    media_id = Column(Integer, ForeignKey("media_files.id"), nullable=False)
-    subtitle_id = Column(Integer, ForeignKey("subtitle_files.id"), nullable=False)
+    # Link back to pairing
+    pairing_id = Column(Integer, ForeignKey("pairings.id"), nullable=False)
+    pairing = relationship("Pairing", back_populates="engine_result")
 
-    # Optional link to engine_results table
-    engine_result_id = Column(Integer, ForeignKey("engine_results.id"), nullable=True)
-
-    # Confidence score from the engine (0.0–1.0)
+    # Engine metadata
+    engine_name = Column(String, nullable=False)  # e.g., "ffsubsync"
     confidence = Column(Float, nullable=True)
+    message = Column(String, nullable=True)
 
-    # Status: "matched", "failed", "manual", etc.
-    status = Column(String, nullable=False, default="matched")
-
-    # When this pairing was created
     created_at = Column(DateTime, default=datetime.utcnow)
-
-    # Relationships
-    media = relationship("MediaFile")
-    subtitle = relationship("SubtitleFile")
-    engine_result = relationship(
-        "EngineResult", back_populates="pairing", uselist=False
-    )

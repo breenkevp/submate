@@ -3,9 +3,6 @@ from sqlalchemy.orm import relationship
 from app.db.base import Base
 from datetime import datetime
 
-last_scanned_at = Column(DateTime, nullable=True)
-exists_on_disk = Column(Boolean, default=True)
-
 
 class MediaFile(Base):
     __tablename__ = "media_files"
@@ -15,4 +12,9 @@ class MediaFile(Base):
     duration = Column(Float, nullable=True)
     hash = Column(String, nullable=True)
 
+    # Incremental scanning fields
+    last_scanned_at = Column(DateTime, nullable=True)
+    exists_on_disk = Column(Boolean, default=True)
+
+    # Relationships
     subtitles = relationship("SubtitleFile", back_populates="media")

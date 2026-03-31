@@ -6,13 +6,10 @@ from app.scanner.classifier import classify_file
 from app.scanner.ingest import ingest_media, ingest_subtitle
 from app.pairing.logic import get_or_create_pairing
 from app.workers.queue import enqueue_sync_job
+from app.scanner.deletion import mark_deleted_files
 
 
 def scan(root: str, db: Session):
-    """
-    Scan a directory, classify files, ingest them into the database,
-    detect pairings, and enqueue sync jobs.
-    """
     media_files = []
     subtitle_files = []
 
@@ -33,6 +30,8 @@ def scan(root: str, db: Session):
         for sub in subtitle_files:
             pairing = get_or_create_pairing(media.id, sub.id, db)
 
-            # Only enqueue if no job exists yet
             if pairing.engine_result_id is None:
                 enqueue_sync_job(media.id, sub.id, db)
+
+    # Final pass: mark deleted files
+    mark_deleted_files(db)
