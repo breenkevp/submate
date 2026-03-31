@@ -1,0 +1,27 @@
+{
+  "name": "submate-dev",
+  "build": {
+    "dockerfile": "../Dockerfile",
+    "context": ".."
+  },
+  "remoteUser": "root",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-python.python",
+        "ms-python.black-formatter",
+        "ms-python.isort",
+        "ms-azuretools.vscode-docker"
+      ],
+      "settings": {
+        "python.formatting.provider": "black",
+        "editor.formatOnSave": true,
+        "python.analysis.typeCheckingMode": "basic"
+      }
+    }
+  },
+  "mounts": [
+    "type=bind,source=/mnt/media/data,target=/mnt/media/data"
+  ],
+  "postCreateCommand": "pip install --no-cache-dir -r requirements.txt"
+}
