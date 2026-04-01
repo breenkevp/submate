@@ -1,39 +1,44 @@
-from sqlalchemy import (
-    Column,
-    Integer,
-    Float,
-    String,
-    ForeignKey,
-    DateTime,
-)
-from sqlalchemy.orm import relationship
 from datetime import datetime
+from typing import TYPE_CHECKING
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy import Integer, Float, String, DateTime, ForeignKey
 from app.db.base import Base
+
+if TYPE_CHECKING:
+    from app.db.models.media_files import MediaFile
+    from app.db.models.subtitle_files import SubtitleFile
+    from app.db.models.engine_results import EngineResult
 
 
 class Pairing(Base):
     __tablename__ = "pairings"
 
-    id = Column(Integer, primary_key=True, index=True)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
 
-    media_id = Column(Integer, ForeignKey("media_files.id"), nullable=False)
-    subtitle_id = Column(Integer, ForeignKey("subtitle_files.id"), nullable=False)
+    media_id: Mapped[int] = mapped_column(ForeignKey("media_files.id"), nullable=False)
+    subtitle_id: Mapped[int] = mapped_column(
+        ForeignKey("subtitle_files.id"), nullable=False
+    )
 
     # Optional link to engine_results table
-    engine_result_id = Column(Integer, ForeignKey("engine_results.id"), nullable=True)
+    engine_result_id: Mapped[int | None] = mapped_column(
+        ForeignKey("engine_results.id"), nullable=True
+    )
 
     # Confidence score from the engine (0.0–1.0)
-    confidence = Column(Float, nullable=True)
+    confidence: Mapped[float | None] = mapped_column(Float, nullable=True)
 
     # Status: "matched", "failed", "manual", etc.
-    status = Column(String, nullable=False, default="matched")
+    status: Mapped[str] = mapped_column(String, nullable=False, default="matched")
 
     # When this pairing was created
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
     # Relationships
-    media = relationship("MediaFile")
-    subtitle = relationship("SubtitleFile")
-    engine_result = relationship(
-        "EngineResult", back_populates="pairing", uselist=False
+    media: Mapped["MediaFile"] = relationship("MediaFile")
+    subtitle: Mapped["SubtitleFile"] = relationship("SubtitleFile")
+    engine_result: Mapped["EngineResult | None"] = relationship(
+        "EngineResult",
+        back_populates="pairing",
+        uselist=False,
     )
