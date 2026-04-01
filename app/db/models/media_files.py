@@ -1,20 +1,27 @@
-from sqlalchemy import Column, Integer, String, Float, Boolean, DateTime
-from sqlalchemy.orm import relationship
-from app.db.base import Base
 from datetime import datetime
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy import String, Float, Boolean, DateTime, Integer
+from app.db.base import Base
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from app.db.models.subtitle_files import SubtitleFile
 
 
 class MediaFile(Base):
     __tablename__ = "media_files"
 
-    id = Column(Integer, primary_key=True, index=True)
-    path = Column(String, unique=True, nullable=False)
-    duration = Column(Float, nullable=True)
-    hash = Column(String, nullable=True)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    path: Mapped[str] = mapped_column(String, unique=True, nullable=False)
+    duration: Mapped[float | None] = mapped_column(Float, nullable=True)
+    hash: Mapped[str | None] = mapped_column(String, nullable=True)
 
     # Incremental scanning fields
-    last_scanned_at = Column(DateTime, nullable=True)
-    exists_on_disk = Column(Boolean, default=True)
+    last_scanned_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    exists_on_disk: Mapped[bool] = mapped_column(Boolean, default=True)
 
     # Relationships
-    subtitles = relationship("SubtitleFile", back_populates="media")
+    subtitles: Mapped[list["SubtitleFile"]] = relationship(
+        "SubtitleFile",
+        back_populates="media",
+    )

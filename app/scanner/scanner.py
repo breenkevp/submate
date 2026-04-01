@@ -7,6 +7,7 @@ from app.scanner.ingest import ingest_media, ingest_subtitle
 from app.pairing.logic import get_or_create_pairing
 from app.workers.queue import enqueue_sync_job
 from app.scanner.deletion import mark_deleted_files
+from app.pairing.heuristics import score_pairing
 
 
 def scan(root: str, db: Session):
@@ -28,6 +29,9 @@ def scan(root: str, db: Session):
     # Second pass: create pairings + enqueue jobs
     for media in media_files:
         for sub in subtitle_files:
+            score = score_pairing(media, sub)
+            if score < 0.5:  # Plausible matches
+                continue
             pairing = get_or_create_pairing(media.id, sub.id, db)
 
             if pairing.engine_result_id is None:
