@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, ForeignKey, Boolean, DateTime
+from sqlalchemy import Column, Integer, String, ForeignKey, Boolean, DateTime, Float
 from sqlalchemy.orm import relationship
 from app.db.base import Base
 
@@ -10,6 +10,7 @@ class SubtitleFile(Base):
     path = Column(String, unique=True, nullable=False)
     language = Column(String, nullable=True)
     hash = Column(String, nullable=True)
+    duration = Column(Float, nullable=True)  # Duration in seconds, if available
 
     # Incremental scanning fields
     last_scanned_at = Column(DateTime, nullable=True)

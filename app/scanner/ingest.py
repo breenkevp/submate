@@ -1,15 +1,13 @@
 # app/scanner/ingest.py
 
-# app/scanner/ingest.py
-
 import os
 from datetime import datetime
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, Mapped, mapped_column
 
 from app.db.models.media_files import MediaFile
 from app.db.models.subtitle_files import SubtitleFile
 from app.hashing.hashing import hash_file
-from app.scanner.ffprobe import get_media_duration
+from app.scanner.ffprobe import get_media_duration, get_subtitle_duration
 from app.scanner.language import detect_language_from_filename
 from app.scanner.change_detection import file_changed
 
@@ -71,6 +69,7 @@ def ingest_subtitle(path: str, db: Session) -> SubtitleFile:
                 # Replacement detected
                 existing.hash = new_hash
                 existing.language = detect_language_from_filename(path)
+                existing.duration = get_subtitle_duration(path)
 
         existing.last_scanned_at = datetime.utcnow()
         existing.exists_on_disk = True
@@ -83,6 +82,7 @@ def ingest_subtitle(path: str, db: Session) -> SubtitleFile:
         path=path,
         hash=hash_file(path),
         language=detect_language_from_filename(path),
+        duration=get_subtitle_duration(path),
         last_scanned_at=datetime.utcnow(),
         exists_on_disk=True,
     )
