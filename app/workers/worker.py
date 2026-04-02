@@ -153,7 +153,58 @@ def worker_loop(poll_interval: int = 3):
         )
 
         if job:
-            process_job(job, db)
+            if job.job_type == "hash":
+                process_hash_job(job, db)
+            else:
+                process_job(job, db)
 
         db.close()
         sleep(poll_interval)
+
+
+def process_hash_job(job: Job, db: Session):
+    """Compute and update the hash for a media or subtitle file."""
+    job.status = "running"
+    db.commit()
+
+    try:
+        # Determine which file this job refers to
+        target = job.media or job.subtitle
+
+        if target is None:
+            job.status = "failed"
+            job.error_message = "Hash job has no media or subtitle target"
+            db.commit()
+            return
+
+        path = target.path
+
+        # File missing?
+        if not os.path.exists(path):
+            target.exists_on_disk = False
+            job.status = "failed"
+            job.error_message = f"File missing during hash job: {path}"
+            db.commit()
+            return
+
+        # Compute hash
+        new_hash = hash_file(path)
+
+        # Update DB fields
+        target.hash = new_hash
+        target.last_scanned_at = datetime.utcnow()
+        target.exists_on_disk = True
+
+        # Optional future fields:
+        # target.size = os.path.getsize(path)
+        # target.mtime = datetime.fromtimestamp(os.path.getmtime(path))
+
+        db.add(target)
+
+        job.status = "completed"
+        db.commit()
+
+    except Exception as e:
+        job.status = "failed"
+        job.error_message = str(e)
+        db.commit()
