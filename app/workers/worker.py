@@ -1,12 +1,15 @@
 import os
 import shutil
+from datetime import datetime
 from time import sleep
 
 from sqlalchemy.orm import Session
+
 from app.db.session import SessionLocal
 from app.db.models.jobs import Job
 from app.db.models.engine_results import EngineResult
 from app.db.models.sync_outputs import SyncOutput
+from app.hashing.hashing import hash_file
 from app.engines.ffsubsync import run_best_engine
 
 
@@ -51,7 +54,7 @@ def process_job(job: Job, db: Session):
                 pairing.status = "failed"
 
         # ------------------------------------------------------------------
-        # ATOMIC SUBTITLE REPLACEMENT
+        # SAFE ATOMIC SUBTITLE REPLACEMENT
         # ------------------------------------------------------------------
         if result.output_path:
             assert result.input_subtitle_path is not None
@@ -86,7 +89,34 @@ def process_job(job: Job, db: Session):
                 db.commit()
                 return
 
-            # 5. Save SyncOutput record
+            # ------------------------------------------------------------------
+            # UPDATE SUBTITLE HASH + METADATA
+            # ------------------------------------------------------------------
+            try:
+                subtitle.hash = hash_file(original_path)
+                subtitle.last_scanned_at = datetime.utcnow()
+                subtitle.exists_on_disk = True
+                db.add(subtitle)
+            except Exception as hash_error:
+                job.status = "failed"
+                job.error_message = f"Hash update failed: {hash_error}"
+                db.commit()
+                return
+
+            # ------------------------------------------------------------------
+            # CLEAN UP FFSUBSYNC TEMP DIRECTORY
+            # ------------------------------------------------------------------
+            try:
+                temp_dir = os.path.dirname(new_path)
+                if os.path.exists(temp_dir):
+                    shutil.rmtree(temp_dir, ignore_errors=True)
+            except Exception:
+                # Non-fatal — temp cleanup failure shouldn't break the job
+                pass
+
+            # ------------------------------------------------------------------
+            # SAVE SyncOutput RECORD
+            # ------------------------------------------------------------------
             sync_output = SyncOutput(
                 pairing_id=job.pairing_id,
                 engine_result_id=engine_result.id,
@@ -101,6 +131,7 @@ def process_job(job: Job, db: Session):
             job.status = "failed"
             job.error_message = result.message
 
+        # Final durable commit
         db.commit()
 
     except Exception as e:
