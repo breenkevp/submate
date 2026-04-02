@@ -1,1 +1,2 @@
 SQLAlchemy>=2.0
+git+https://github.com/denizsafak/AutoSubSync.git@v6.3
