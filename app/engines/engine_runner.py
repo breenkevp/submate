@@ -1,4 +1,7 @@
-from typing import Optional, Tuple
+from typing import Optional
+
+
+CONFIDENCE_THRESHOLD = 0.75  # tweak as you learn
 
 
 class EngineResultData:
@@ -8,33 +11,39 @@ class EngineResultData:
         confidence: Optional[float],
         message: Optional[str],
         output_path: Optional[str],
+        input_media_path: Optional[str] = None,
+        input_subtitle_path: Optional[str] = None,
     ):
         self.engine_name = engine_name
         self.confidence = confidence
         self.message = message
         self.output_path = output_path
-
-
-def run_ffsubsync(media_path: str, subtitle_path: str) -> EngineResultData:
-    raise NotImplementedError
-
-
-def run_autosubsync(media_path: str, subtitle_path: str) -> EngineResultData:
-    raise NotImplementedError
+        self.input_media_path = input_media_path
+        self.input_subtitle_path = input_subtitle_path
 
 
 def run_best_engine(media_path: str, subtitle_path: str) -> EngineResultData:
-    # Try ffsubsync first
-    ff = run_ffsubsync(media_path, subtitle_path)
+    # Local import to avoid circular dependancy
+    from app.engines.ffsubsync import run_ffsubsync
 
-    if ff.output_path and (ff.confidence is None or ff.confidence >= 0.5):
-        return ff
+    result = run_ffsubsync(media_path, subtitle_path)
 
-    # Fallback to autosubsync
-    auto = run_autosubsync(media_path, subtitle_path)
+    # If ffsubsync produced no file, it's a hard failure
+    if not result.output_path:
+        return result
 
-    if auto.output_path:
-        return auto
+    # If confidence is missing, treat as low-confidence but usable
+    if result.confidence is None:
+        return result
 
-    # Both failed
-    return ff if ff.output_path else auto
+    # Enforce threshold
+    if result.confidence >= CONFIDENCE_THRESHOLD:
+        return result
+
+    # Below threshold: treat as failure by clearing output_path
+    result.message = (
+        (result.message or "")
+        + f"\n[engine] confidence {result.confidence:.2f} below threshold {CONFIDENCE_THRESHOLD:.2f}"
+    )
+    result.output_path = None
+    return result

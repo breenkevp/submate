@@ -1,7 +1,7 @@
 import subprocess
 import tempfile
 from pathlib import Path
-from .engine_runner import EngineResultData
+from .engine_runner import EngineResultData, CONFIDENCE_THRESHOLD
 
 
 def run_ffsubsync(media_path: str, subtitle_path: str) -> EngineResultData:
@@ -42,6 +42,8 @@ def run_ffsubsync(media_path: str, subtitle_path: str) -> EngineResultData:
             confidence=confidence,
             message=result.stdout + "\n" + result.stderr,
             output_path=output_path if Path(output_path).exists() else None,
+            input_media_path=media_path,
+            input_subtitle_path=subtitle_path,
         )
 
     except Exception as e:
@@ -50,4 +52,31 @@ def run_ffsubsync(media_path: str, subtitle_path: str) -> EngineResultData:
             confidence=None,
             message=str(e),
             output_path=None,
+            input_media_path=media_path,
+            input_subtitle_path=subtitle_path,
         )
+
+
+def run_best_engine(media_path: str, subtitle_path: str) -> EngineResultData:
+
+    result = run_ffsubsync(media_path, subtitle_path)
+
+    # If ffsubsync produced no file, it's a hard failure
+    if not result.output_path:
+        return result
+
+    # If confidence is missing, treat as low-confidence but usable
+    if result.confidence is None:
+        return result
+
+    # Enforce threshold
+    if result.confidence >= CONFIDENCE_THRESHOLD:
+        return result
+
+    # Below threshold: treat as failure by clearing output_path
+    result.message = (
+        (result.message or "")
+        + f"\n[engine] confidence {result.confidence:.2f} below threshold {CONFIDENCE_THRESHOLD:.2f}"
+    )
+    result.output_path = None
+    return result
