@@ -2,14 +2,14 @@
 
 import os
 from datetime import datetime
-from sqlalchemy.orm import Session, Mapped, mapped_column
+from sqlalchemy.orm import Session
 
 from app.db.models.media_files import MediaFile
 from app.db.models.subtitle_files import SubtitleFile
-from app.hashing.hashing import hash_file
 from app.scanner.ffprobe import get_media_duration, get_subtitle_duration
 from app.scanner.language import detect_language_from_filename
 from app.scanner.change_detection import file_changed
+from app.workers.hash_queue import enqueue_hash_job
 
 
 def ingest_media(path: str, db: Session) -> MediaFile:
@@ -24,12 +24,11 @@ def ingest_media(path: str, db: Session) -> MediaFile:
 
         # File changed?
         if file_changed(path, existing):
-            new_hash = hash_file(path)
+            # Enqueue a hash job instead of hashing inline
+            enqueue_hash_job(db=db, media_id=existing.id)
 
-            if existing.hash != new_hash:
-                # Replacement detected
-                existing.hash = new_hash
-                existing.duration = get_media_duration(path)
+            # Duration may still need updating immediately
+            existing.duration = get_media_duration(path)
 
         existing.last_scanned_at = datetime.utcnow()
         existing.exists_on_disk = True
@@ -40,7 +39,7 @@ def ingest_media(path: str, db: Session) -> MediaFile:
     # New file
     media = MediaFile(
         path=path,
-        hash=hash_file(path),
+        hash=None,  # Let hash job fill this in
         duration=get_media_duration(path),
         last_scanned_at=datetime.utcnow(),
         exists_on_disk=True,
@@ -48,6 +47,10 @@ def ingest_media(path: str, db: Session) -> MediaFile:
     db.add(media)
     db.commit()
     db.refresh(media)
+
+    # Enqueue hash job for new file
+    enqueue_hash_job(db=db, media_id=media.id)
+
     return media
 
 
@@ -63,13 +66,12 @@ def ingest_subtitle(path: str, db: Session) -> SubtitleFile:
 
         # File changed?
         if file_changed(path, existing):
-            new_hash = hash_file(path)
+            # Enqueue a hash job instead of hashing inline
+            enqueue_hash_job(db=db, subtitle_id=existing.id)
 
-            if existing.hash != new_hash:
-                # Replacement detected
-                existing.hash = new_hash
-                existing.language = detect_language_from_filename(path)
-                existing.duration = get_subtitle_duration(path)
+            # Update metadata that hashing doesn't handle
+            existing.language = detect_language_from_filename(path)
+            existing.duration = get_subtitle_duration(path)
 
         existing.last_scanned_at = datetime.utcnow()
         existing.exists_on_disk = True
@@ -80,7 +82,7 @@ def ingest_subtitle(path: str, db: Session) -> SubtitleFile:
     # New file
     sub = SubtitleFile(
         path=path,
-        hash=hash_file(path),
+        hash=None,  # Let hash job fill this in
         language=detect_language_from_filename(path),
         duration=get_subtitle_duration(path),
         last_scanned_at=datetime.utcnow(),
@@ -89,4 +91,8 @@ def ingest_subtitle(path: str, db: Session) -> SubtitleFile:
     db.add(sub)
     db.commit()
     db.refresh(sub)
+
+    # Enqueue hash job for new file
+    enqueue_hash_job(db=db, subtitle_id=sub.id)
+
     return sub

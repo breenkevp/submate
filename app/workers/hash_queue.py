@@ -2,7 +2,9 @@ from sqlalchemy.orm import Session
 from app.db.models.jobs import Job
 
 
-def enqueue_hash_job(media_id=None, subtitle_id=None, db: Session = None) -> Job:
+def enqueue_hash_job(
+    db: Session, media_id: int | None = None, subtitle_id: int | None = None
+) -> Job:
     """
     Enqueue a hash job unless one already exists for this file
     that is still queued or running.
