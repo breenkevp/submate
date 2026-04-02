@@ -15,7 +15,10 @@ class PairingAudit(Base):
 
     # Link to the pairing this audit entry refers to
     pairing_id: Mapped[int] = mapped_column(ForeignKey("pairings.id"), nullable=False)
-    pairing: Mapped["Pairing"] = relationship("Pairing")
+    pairing: Mapped["Pairing"] = relationship(
+        "Pairing",
+        back_populates="audits",
+    )
 
     # Score components
     name_score: Mapped[float | None] = mapped_column(Float, nullable=True)

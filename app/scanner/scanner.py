@@ -8,6 +8,9 @@ from app.pairing.logic import get_or_create_pairing
 from app.workers.queue import enqueue_sync_job
 from app.scanner.deletion import mark_deleted_files
 from app.pairing.heuristics import score_pairing
+from app.pairing.audit import record_pairing_audit
+
+PAIRING_THRESHOLD = 0.5
 
 
 def scan(root: str, db: Session):
@@ -28,14 +31,38 @@ def scan(root: str, db: Session):
 
     # Second pass: create pairings + enqueue jobs
     for media in media_files:
+        scored_subs = []
+
         for sub in subtitle_files:
-            score = score_pairing(media, sub)
-            if score < 0.5:  # Plausible matches
-                continue
+            scores = score_pairing(media, sub)
+            decision = (
+                "accepted" if scores["final_score"] >= PAIRING_THRESHOLD else "rejected"
+            )
+
+            # Create or fetch pairing
             pairing = get_or_create_pairing(media.id, sub.id, db)
 
-            if pairing.engine_result_id is None:
-                enqueue_sync_job(media.id, sub.id, db)
+            # Always record audit
+            record_pairing_audit(
+                db=db,
+                pairing_id=pairing.id,
+                scores=scores,
+                decision=decision,
+            )
+
+            scored_subs.append((sub, scores))
+
+        # Pick the best subtitle for this media
+        if not scored_subs:
+            continue
+
+        best_sub, best_scores = max(
+            scored_subs, key=lambda item: item[1]["final_score"]
+        )
+
+    # Only enqueue if the best score is acceptable
+    if best_scores["final_score"] >= 0.5:
+        enqueue_sync_job(media.id, best_sub.id, db)
 
     # Final pass: mark deleted files
     mark_deleted_files(db)

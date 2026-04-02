@@ -4,6 +4,7 @@ import re
 from pathlib import Path
 from difflib import SequenceMatcher
 from pathlib import Path
+from typing import Dict
 
 
 def directory_proximity(media_path: str, sub_path: str) -> float:
@@ -62,7 +63,7 @@ def language_match(sub_lang: str | None) -> float:
     return 1.0 if sub_lang.lower() == "english" else 0.3
 
 
-def score_pairing(media, subtitle) -> float:
+def score_pairing(media, subtitle) -> Dict[str, float]:
     """
     Produce a heuristic score (0.0–1.0) for how likely a subtitle
     belongs to a media file.
@@ -90,13 +91,21 @@ def score_pairing(media, subtitle) -> float:
     proximity_score = directory_proximity(media.path, subtitle.path)
 
     # Weighted score
-    return (
+    final_score = (
         name_score * 0.45
         + episode_score * 0.25
         + proximity_score * 0.20
         + duration_sanity(media.duration, subtitle.duration) * 0.10
         + lang_score * 0.10
     )
+    return {
+        "name_score": name_score,
+        "episode_score": episode_score,
+        "proximity_score": proximity_score,
+        "duration_score": duration_sanity(media.duration, subtitle.duration),
+        "language_score": lang_score,
+        "final_score": final_score,
+    }
 
 
 def duration_sanity(media_duration: float | None, sub_duration: float | None) -> float:

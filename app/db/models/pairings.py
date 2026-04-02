@@ -8,12 +8,17 @@ if TYPE_CHECKING:
     from app.db.models.media_files import MediaFile
     from app.db.models.subtitle_files import SubtitleFile
     from app.db.models.engine_results import EngineResult
+    from app.db.models.pairing_audits import PairingAudit
 
 
 class Pairing(Base):
     __tablename__ = "pairings"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+
+    audits: Mapped[list["PairingAudit"]] = relationship(
+        "PairingAudit", back_populates="pairing", cascade="all, delete-orphan"
+    )
 
     media_id: Mapped[int] = mapped_column(ForeignKey("media_files.id"), nullable=False)
     subtitle_id: Mapped[int] = mapped_column(
