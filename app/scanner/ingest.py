@@ -6,10 +6,12 @@ from sqlalchemy.orm import Session
 
 from app.db.models.media_files import MediaFile
 from app.db.models.subtitle_files import SubtitleFile
+from app.db.models.pairings import Pairing
 from app.scanner.ffprobe import get_media_duration, get_subtitle_duration
 from app.scanner.language import detect_language_from_filename
 from app.scanner.change_detection import file_changed
 from app.workers.hash_queue import enqueue_hash_job
+from app.pairing.hash_audit import record_hash_audit
 
 
 def ingest_media(path: str, db: Session) -> MediaFile:
@@ -24,8 +26,27 @@ def ingest_media(path: str, db: Session) -> MediaFile:
 
         # File changed?
         if file_changed(path, existing):
+            # Record metadata change audit
+            record_hash_audit(
+                db=db,
+                file_type="media",
+                file_id=existing.id,
+                event="metadata_changed",
+            )
+
+            # Invalidate any existing pairings
+            pairings = db.query(Pairing).filter_by(media_id=existing.id).all()
+            for p in pairings:
+                p.status = "stale"
+
+            # Enqueue hash job and refresh duration
             enqueue_hash_job(db=db, media_id=existing.id)
             existing.duration = get_media_duration(path)
+
+            # Update size + mtime now that we know it changed
+            stat = os.stat(path)
+            existing.size = stat.st_size
+            existing.mtime = datetime.fromtimestamp(stat.st_mtime, timezone.utc)
 
         existing.last_scanned_at = datetime.now(timezone.utc)
         existing.exists_on_disk = True
@@ -49,6 +70,7 @@ def ingest_media(path: str, db: Session) -> MediaFile:
     db.commit()
     db.refresh(media)
 
+    # First-time discovery: enqueue hash job
     enqueue_hash_job(db=db, media_id=media.id)
 
     return media
@@ -66,9 +88,28 @@ def ingest_subtitle(path: str, db: Session) -> SubtitleFile:
 
         # File changed?
         if file_changed(path, existing):
+            # Record metadata change audit
+            record_hash_audit(
+                db=db,
+                file_type="subtitle",
+                file_id=existing.id,
+                event="metadata_changed",
+            )
+
+            # Invalidate any existing pairings
+            pairings = db.query(Pairing).filter_by(subtitle_id=existing.id).all()
+            for p in pairings:
+                p.status = "stale"
+
+            # Enqueue hash job and refresh language/duration
             enqueue_hash_job(db=db, subtitle_id=existing.id)
             existing.language = detect_language_from_filename(path)
             existing.duration = get_subtitle_duration(path)
+
+            # Update size + mtime now that we know it changed
+            stat = os.stat(path)
+            existing.size = stat.st_size
+            existing.mtime = datetime.fromtimestamp(stat.st_mtime, timezone.utc)
 
         existing.last_scanned_at = datetime.now(timezone.utc)
         existing.exists_on_disk = True
@@ -77,6 +118,8 @@ def ingest_subtitle(path: str, db: Session) -> SubtitleFile:
         return existing
 
     # New file
+    stat = os.stat(path)
+
     sub = SubtitleFile(
         path=path,
         hash=None,  # Let hash job fill this in
@@ -84,11 +127,14 @@ def ingest_subtitle(path: str, db: Session) -> SubtitleFile:
         duration=get_subtitle_duration(path),
         last_scanned_at=datetime.now(timezone.utc),
         exists_on_disk=True,
+        size=stat.st_size,
+        mtime=datetime.fromtimestamp(stat.st_mtime, timezone.utc),
     )
     db.add(sub)
     db.commit()
     db.refresh(sub)
 
+    # First-time discovery: enqueue hash job
     enqueue_hash_job(db=db, subtitle_id=sub.id)
 
     return sub
