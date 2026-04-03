@@ -15,7 +15,7 @@ from app.db.models.media_files import MediaFile
 from app.db.models.subtitle_files import SubtitleFile
 from app.db.models.pairings import Pairing
 from app.hashing.hashing import hash_file
-from app.engines.ffsubsync import run_best_en
+from app.engines.ffsubsync import run_best_engine
 from app.pairing.hash_audit import record_hash_audit
 
 
@@ -38,7 +38,7 @@ def process_sync_job(job: Job, db: Session):
             db.commit()
             return
 
-        result = run_best_en(media.path, subtitle.path)
+        result = run_best_engine(media.path, subtitle.path)
 
         # Persist engine result
         engine_result = EngineResult(
