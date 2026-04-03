@@ -166,6 +166,8 @@ def process_sync_job(job: Job, db: Session):
 
 
 def process_hash_job(job: Job, db: Session):
+    from app.websockets.manager import manager  # local import avoids circulars
+
     job.status = "running"
     job.started_at = datetime.now(timezone.utc)
     db.commit()
@@ -178,6 +180,22 @@ def process_hash_job(job: Job, db: Session):
             job.error_message = "Hash job has no media or subtitle target"
             job.finished_at = datetime.now(timezone.utc)
             db.commit()
+
+            # Broadcast failure
+            try:
+                asyncio.create_task(
+                    manager.broadcast(
+                        {
+                            "type": "hash_job_update",
+                            "job_id": job.id,
+                            "status": job.status,
+                            "error_message": job.error_message,
+                        }
+                    )
+                )
+            except RuntimeError:
+                pass
+
             return
 
         path = target.path
@@ -188,6 +206,22 @@ def process_hash_job(job: Job, db: Session):
             job.error_message = f"File missing during hash job: {path}"
             job.finished_at = datetime.now(timezone.utc)
             db.commit()
+
+            # Broadcast failure
+            try:
+                asyncio.create_task(
+                    manager.broadcast(
+                        {
+                            "type": "hash_job_update",
+                            "job_id": job.id,
+                            "status": job.status,
+                            "error_message": job.error_message,
+                        }
+                    )
+                )
+            except RuntimeError:
+                pass
+
             return
 
         old_hash = target.hash
@@ -203,7 +237,7 @@ def process_hash_job(job: Job, db: Session):
                 new_hash=new_hash,
             )
 
-        # Hash change (metadata changed or unexpected)
+        # Hash changed
         elif old_hash and new_hash and old_hash != new_hash:
             record_hash_audit(
                 db=db,
@@ -214,7 +248,7 @@ def process_hash_job(job: Job, db: Session):
                 new_hash=new_hash,
             )
 
-            # OPTIONAL: invalidate pairings on unexpected hash change
+            # Invalidate pairings
             if job.media_id:
                 for p in db.query(Pairing).filter_by(media_id=target.id).all():
                     p.status = "stale"
@@ -222,9 +256,9 @@ def process_hash_job(job: Job, db: Session):
                 for p in db.query(Pairing).filter_by(subtitle_id=target.id).all():
                     p.status = "stale"
 
+        # Update hash + metadata
         target.hash = new_hash
 
-        # Update size + mtime
         stat = os.stat(path)
         target.size = stat.st_size
         target.mtime = datetime.fromtimestamp(stat.st_mtime, timezone.utc)
@@ -237,24 +271,23 @@ def process_hash_job(job: Job, db: Session):
         job.finished_at = datetime.now(timezone.utc)
         db.commit()
 
-        # Fire-and-forget broadcast to websocket
+        # Broadcast success
         try:
             asyncio.create_task(
                 manager.broadcast(
                     {
-                        "type": "job_update",
+                        "type": "hash_job_update",
                         "job_id": job.id,
                         "status": job.status,
                         "media_id": job.media_id,
                         "subtitle_id": job.subtitle_id,
                         "pairing_id": job.pairing_id,
-                        "engine_result_id": job.engine_result_id,
-                        "error_message": job.error_message,
+                        "old_hash": old_hash,
+                        "new_hash": new_hash,
                     }
                 )
             )
         except RuntimeError:
-            # If no running loop (e.g., worker in plain sync context), ignore
             pass
 
     except Exception as e:
@@ -262,6 +295,21 @@ def process_hash_job(job: Job, db: Session):
         job.error_message = str(e)
         job.finished_at = datetime.now(timezone.utc)
         db.commit()
+
+        # Broadcast failure
+        try:
+            asyncio.create_task(
+                manager.broadcast(
+                    {
+                        "type": "hash_job_update",
+                        "job_id": job.id,
+                        "status": job.status,
+                        "error_message": job.error_message,
+                    }
+                )
+            )
+        except RuntimeError:
+            pass
 
 
 def worker_loop():
