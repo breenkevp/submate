@@ -1,6 +1,6 @@
 import os
 import shutil
-from datetime import datetime
+from datetime import datetime, timezone
 from time import sleep
 
 from sqlalchemy.orm import Session
@@ -94,7 +94,7 @@ def process_job(job: Job, db: Session):
             # ------------------------------------------------------------------
             try:
                 subtitle.hash = hash_file(original_path)
-                subtitle.last_scanned_at = datetime.utcnow()
+                subtitle.last_scanned_at = datetime.now(timezone.utc)
                 subtitle.exists_on_disk = True
                 db.add(subtitle)
             except Exception as hash_error:
