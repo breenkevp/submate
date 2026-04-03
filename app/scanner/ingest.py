@@ -34,12 +34,16 @@ def ingest_media(path: str, db: Session) -> MediaFile:
         return existing
 
     # New file
+    stat = os.stat(path)
+
     media = MediaFile(
         path=path,
         hash=None,  # Let hash job fill this in
         duration=get_media_duration(path),
         last_scanned_at=datetime.now(timezone.utc),
         exists_on_disk=True,
+        size=stat.st_size,
+        mtime=datetime.fromtimestamp(stat.st_mtime, timezone.utc),
     )
     db.add(media)
     db.commit()

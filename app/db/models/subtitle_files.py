@@ -1,3 +1,5 @@
+# app/db/models/subtitle_files.py
+
 from datetime import datetime, timezone
 from typing import TYPE_CHECKING
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -18,14 +20,18 @@ class SubtitleFile(Base):
     hash: Mapped[str | None] = mapped_column(String, nullable=True)
     duration: Mapped[float | None] = mapped_column(Float, nullable=True)
 
-    # Incremental scanning fields
+    # Incremental scanning metadata
+    size: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    mtime: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
     last_scanned_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True),
         nullable=True,
     )
     exists_on_disk: Mapped[bool] = mapped_column(Boolean, default=True)
 
-    # Relationship back to media
     media_id: Mapped[int | None] = mapped_column(ForeignKey("media_files.id"))
     media: Mapped["MediaFile"] = relationship(
         "MediaFile",

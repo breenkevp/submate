@@ -1,3 +1,5 @@
+# app/db/models/pairing_audits.py
+
 from datetime import datetime, timezone
 from typing import TYPE_CHECKING
 from sqlalchemy.orm import Mapped, mapped_column, relationship

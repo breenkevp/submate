@@ -1,3 +1,5 @@
+# app/workers/hash_queue.py
+
 from sqlalchemy.orm import Session
 from app.db.models.jobs import Job
 
