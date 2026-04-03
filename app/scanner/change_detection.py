@@ -7,10 +7,10 @@ from datetime import datetime, timezone
 def file_changed(path: str, db_obj) -> bool:
     """
     Determine if a file has changed since last scan.
-    Compares:
+    Uses:
       - file existence
-      - mtime (timezone-aware)
-      - file size
+      - stored size
+      - stored mtime (timezone-aware)
     """
 
     # Missing file always counts as changed
@@ -19,22 +19,19 @@ def file_changed(path: str, db_obj) -> bool:
 
     stat = os.stat(path)
 
-    # If never scanned, treat as changed
-    if db_obj.last_scanned_at is None:
+    # If we have never stored metadata, treat as changed
+    if db_obj.mtime is None or db_obj.size is None:
         return True
 
-    # Compare mtime (db_obj.mtime is timezone-aware)
+    # Compute current mtime as timezone-aware
     file_mtime = datetime.fromtimestamp(stat.st_mtime, timezone.utc)
 
-    if db_obj.mtime is None:
-        # No stored mtime → treat as changed
-        return True
-
+    # Compare mtime
     if file_mtime != db_obj.mtime:
         return True
 
     # Compare size
-    if db_obj.size is None or db_obj.size != stat.st_size:
+    if stat.st_size != db_obj.size:
         return True
 
     return False
