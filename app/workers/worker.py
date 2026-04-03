@@ -24,6 +24,8 @@ POLL_INTERVAL_SECONDS = 2
 
 
 def process_sync_job(job: Job, db: Session):
+    from app.websockets.manager import manager  # local import avoids circulars
+
     job.status = "running"
     job.started_at = datetime.now(timezone.utc)
     db.commit()
@@ -37,13 +39,30 @@ def process_sync_job(job: Job, db: Session):
             job.error_message = "Sync job missing media or subtitle"
             job.finished_at = datetime.now(timezone.utc)
             db.commit()
+
+            # Broadcast failure
+            try:
+                asyncio.create_task(
+                    manager.broadcast(
+                        {
+                            "type": "sync_job_update",
+                            "job_id": job.id,
+                            "status": job.status,
+                            "error_message": job.error_message,
+                        }
+                    )
+                )
+            except RuntimeError:
+                pass
+
             return
 
+        # Run engine
         result = run_best_engine(media.path, subtitle.path)
 
         # Persist engine result
         engine_result = EngineResult(
-            pairing_id=job.pairing_id if job.pairing_id is not None else None,
+            pairing_id=job.pairing_id,
             engine_name=result.engine_name,
             confidence=result.confidence,
             message=result.message,
@@ -61,38 +80,89 @@ def process_sync_job(job: Job, db: Session):
             job.engine_result_id = engine_result.id
             job.finished_at = datetime.now(timezone.utc)
             db.commit()
+
+            # Broadcast failure
+            try:
+                asyncio.create_task(
+                    manager.broadcast(
+                        {
+                            "type": "sync_job_update",
+                            "job_id": job.id,
+                            "status": job.status,
+                            "engine_result_id": engine_result.id,
+                            "error_message": job.error_message,
+                        }
+                    )
+                )
+            except RuntimeError:
+                pass
+
             return
 
-        # Move synced subtitle into place (or wherever you want it)
-        output_path = result.output_path
-
+        # Save sync output
         sync_output = SyncOutput(
-            output_path=output_path,
-            pairing_id=job.pairing_id if job.pairing_id is not None else 0,
+            output_path=result.output_path,
+            pairing_id=job.pairing_id if job.pairing_id else 0,
             engine_result_id=engine_result.id,
             quality=result.confidence,
             replaced_existing=0,
         )
         db.add(sync_output)
 
-        # Update pairing with engine_result + confidence if present
-        if job.pairing_id is not None:
+        # Update pairing if present
+        if job.pairing_id:
             pairing = db.query(Pairing).get(job.pairing_id)
             if pairing:
                 pairing.engine_result_id = engine_result.id
                 pairing.confidence = result.confidence
                 pairing.status = "matched"
 
+        # Finalize job
         job.status = "completed"
         job.engine_result_id = engine_result.id
         job.finished_at = datetime.now(timezone.utc)
         db.commit()
+
+        # Broadcast success
+        try:
+            asyncio.create_task(
+                manager.broadcast(
+                    {
+                        "type": "sync_job_update",
+                        "job_id": job.id,
+                        "status": job.status,
+                        "media_id": job.media_id,
+                        "subtitle_id": job.subtitle_id,
+                        "pairing_id": job.pairing_id,
+                        "engine_result_id": job.engine_result_id,
+                        "confidence": result.confidence,
+                        "output_path": result.output_path,
+                    }
+                )
+            )
+        except RuntimeError:
+            pass
 
     except Exception as e:
         job.status = "failed"
         job.error_message = str(e)
         job.finished_at = datetime.now(timezone.utc)
         db.commit()
+
+        # Broadcast failure
+        try:
+            asyncio.create_task(
+                manager.broadcast(
+                    {
+                        "type": "sync_job_update",
+                        "job_id": job.id,
+                        "status": job.status,
+                        "error_message": job.error_message,
+                    }
+                )
+            )
+        except RuntimeError:
+            pass
 
 
 def process_hash_job(job: Job, db: Session):
