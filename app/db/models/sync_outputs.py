@@ -18,12 +18,16 @@ class SyncOutput(Base):
     output_path: Mapped[str] = mapped_column(String, nullable=False)
 
     # Link to pairing that produced this output
-    pairing_id: Mapped[int] = mapped_column(ForeignKey("pairings.id"), nullable=False)
+    pairing_id: Mapped[int] = mapped_column(
+        ForeignKey("pairings.id"),
+        nullable=False,
+    )
     pairing: Mapped["Pairing"] = relationship("Pairing")
 
     # Optional link to engine result
     engine_result_id: Mapped[int | None] = mapped_column(
-        ForeignKey("engine_results.id"), nullable=True
+        ForeignKey("engine_results.id"),
+        nullable=True,
     )
     engine_result: Mapped["EngineResult | None"] = relationship("EngineResult")
 
@@ -34,5 +38,6 @@ class SyncOutput(Base):
     replaced_existing: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
 
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
     )
