@@ -35,8 +35,7 @@ def ingest_media(path: str, db: Session) -> MediaFile:
             )
 
             # Invalidate any existing pairings
-            pairings = db.query(Pairing).filter_by(media_id=existing.id).all()
-            for p in pairings:
+            for p in db.query(Pairing).filter_by(media_id=existing.id).all():
                 p.status = "stale"
 
             # Enqueue hash job and refresh duration
@@ -97,8 +96,7 @@ def ingest_subtitle(path: str, db: Session) -> SubtitleFile:
             )
 
             # Invalidate any existing pairings
-            pairings = db.query(Pairing).filter_by(subtitle_id=existing.id).all()
-            for p in pairings:
+            for p in db.query(Pairing).filter_by(subtitle_id=existing.id).all():
                 p.status = "stale"
 
             # Enqueue hash job and refresh language/duration
