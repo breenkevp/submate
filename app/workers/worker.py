@@ -1,7 +1,6 @@
 # app/workers/worker.py
 
 import os
-import shutil
 from datetime import datetime, timezone
 from time import sleep
 
@@ -142,6 +141,25 @@ def process_hash_job(job: Job, db: Session):
                 old_hash=old_hash,
                 new_hash=new_hash,
             )
+
+        # Expected change (metadata changed, hash changed)
+        if old_hash and new_hash and old_hash != new_hash:
+            record_hash_audit(
+                db=db,
+                file_type="media" if job.media_id else "subtitle",
+                file_id=target.id,
+                event="unexpected_hash_change",
+                old_hash=old_hash,
+                new_hash=new_hash,
+            )
+
+            # OPTIONAL: invalidate pairings on unexpected hash change
+            if job.media_id:
+                for p in db.query(Pairing).filter_by(media_id=target.id).all():
+                    p.status = "stale"
+            else:
+                for p in db.query(Pairing).filter_by(subtitle_id=target.id).all():
+                    p.status = "stale"
 
         target.hash = new_hash
 
