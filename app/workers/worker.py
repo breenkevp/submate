@@ -1,6 +1,7 @@
 # app/workers/worker.py
 
 import os
+import asyncio
 from datetime import datetime, timezone
 from time import sleep
 
@@ -16,12 +17,15 @@ from app.db.models.pairings import Pairing
 from app.hashing.hashing import hash_file
 from app.engines.ffsubsync import run_best_engine
 from app.pairing.hash_audit import record_hash_audit
+from app.websockets.manager import manager
 
 
 POLL_INTERVAL_SECONDS = 2
 
 
 def process_sync_job(job: Job, db: Session):
+    from app.websockets.events import broadcast_event  # local import avoids circulars
+
     job.status = "running"
     job.started_at = datetime.now(timezone.utc)
     db.commit()
@@ -35,13 +39,23 @@ def process_sync_job(job: Job, db: Session):
             job.error_message = "Sync job missing media or subtitle"
             job.finished_at = datetime.now(timezone.utc)
             db.commit()
+
+            broadcast_event(
+                "sync_job_update",
+                {
+                    "job_id": job.id,
+                    "status": job.status,
+                    "error_message": job.error_message,
+                },
+            )
             return
 
+        # Run engine
         result = run_best_engine(media.path, subtitle.path)
 
         # Persist engine result
         engine_result = EngineResult(
-            pairing_id=job.pairing_id if job.pairing_id is not None else None,
+            pairing_id=job.pairing_id,
             engine_name=result.engine_name,
             confidence=result.confidence,
             message=result.message,
@@ -59,32 +73,55 @@ def process_sync_job(job: Job, db: Session):
             job.engine_result_id = engine_result.id
             job.finished_at = datetime.now(timezone.utc)
             db.commit()
+
+            broadcast_event(
+                "sync_job_update",
+                {
+                    "job_id": job.id,
+                    "status": job.status,
+                    "engine_result_id": engine_result.id,
+                    "error_message": job.error_message,
+                },
+            )
             return
 
-        # Move synced subtitle into place (or wherever you want it)
-        output_path = result.output_path
-
+        # Save sync output
         sync_output = SyncOutput(
-            output_path=output_path,
-            pairing_id=job.pairing_id if job.pairing_id is not None else 0,
+            output_path=result.output_path,
+            pairing_id=job.pairing_id if job.pairing_id else 0,
             engine_result_id=engine_result.id,
             quality=result.confidence,
             replaced_existing=0,
         )
         db.add(sync_output)
 
-        # Update pairing with engine_result + confidence if present
-        if job.pairing_id is not None:
+        # Update pairing if present
+        if job.pairing_id:
             pairing = db.query(Pairing).get(job.pairing_id)
             if pairing:
                 pairing.engine_result_id = engine_result.id
                 pairing.confidence = result.confidence
                 pairing.status = "matched"
 
+        # Finalize job
         job.status = "completed"
         job.engine_result_id = engine_result.id
         job.finished_at = datetime.now(timezone.utc)
         db.commit()
+
+        broadcast_event(
+            "sync_job_update",
+            {
+                "job_id": job.id,
+                "status": job.status,
+                "media_id": job.media_id,
+                "subtitle_id": job.subtitle_id,
+                "pairing_id": job.pairing_id,
+                "engine_result_id": job.engine_result_id,
+                "confidence": result.confidence,
+                "output_path": result.output_path,
+            },
+        )
 
     except Exception as e:
         job.status = "failed"
@@ -92,8 +129,19 @@ def process_sync_job(job: Job, db: Session):
         job.finished_at = datetime.now(timezone.utc)
         db.commit()
 
+        broadcast_event(
+            "sync_job_update",
+            {
+                "job_id": job.id,
+                "status": job.status,
+                "error_message": job.error_message,
+            },
+        )
+
 
 def process_hash_job(job: Job, db: Session):
+    from app.websockets.events import broadcast_event  # local import avoids circulars
+
     job.status = "running"
     job.started_at = datetime.now(timezone.utc)
     db.commit()
@@ -106,6 +154,15 @@ def process_hash_job(job: Job, db: Session):
             job.error_message = "Hash job has no media or subtitle target"
             job.finished_at = datetime.now(timezone.utc)
             db.commit()
+
+            broadcast_event(
+                "hash_job_update",
+                {
+                    "job_id": job.id,
+                    "status": job.status,
+                    "error_message": job.error_message,
+                },
+            )
             return
 
         path = target.path
@@ -116,6 +173,15 @@ def process_hash_job(job: Job, db: Session):
             job.error_message = f"File missing during hash job: {path}"
             job.finished_at = datetime.now(timezone.utc)
             db.commit()
+
+            broadcast_event(
+                "hash_job_update",
+                {
+                    "job_id": job.id,
+                    "status": job.status,
+                    "error_message": job.error_message,
+                },
+            )
             return
 
         old_hash = target.hash
@@ -131,8 +197,8 @@ def process_hash_job(job: Job, db: Session):
                 new_hash=new_hash,
             )
 
-        # Unexpected change
-        if old_hash is not None and new_hash is not None and old_hash != new_hash:
+        # Hash changed
+        elif old_hash and new_hash and old_hash != new_hash:
             record_hash_audit(
                 db=db,
                 file_type="media" if job.media_id else "subtitle",
@@ -142,18 +208,7 @@ def process_hash_job(job: Job, db: Session):
                 new_hash=new_hash,
             )
 
-        # Expected change (metadata changed, hash changed)
-        if old_hash and new_hash and old_hash != new_hash:
-            record_hash_audit(
-                db=db,
-                file_type="media" if job.media_id else "subtitle",
-                file_id=target.id,
-                event="unexpected_hash_change",
-                old_hash=old_hash,
-                new_hash=new_hash,
-            )
-
-            # OPTIONAL: invalidate pairings on unexpected hash change
+            # Invalidate pairings
             if job.media_id:
                 for p in db.query(Pairing).filter_by(media_id=target.id).all():
                     p.status = "stale"
@@ -161,9 +216,9 @@ def process_hash_job(job: Job, db: Session):
                 for p in db.query(Pairing).filter_by(subtitle_id=target.id).all():
                     p.status = "stale"
 
+        # Update hash + metadata
         target.hash = new_hash
 
-        # Update size + mtime
         stat = os.stat(path)
         target.size = stat.st_size
         target.mtime = datetime.fromtimestamp(stat.st_mtime, timezone.utc)
@@ -176,11 +231,33 @@ def process_hash_job(job: Job, db: Session):
         job.finished_at = datetime.now(timezone.utc)
         db.commit()
 
+        broadcast_event(
+            "hash_job_update",
+            {
+                "job_id": job.id,
+                "status": job.status,
+                "media_id": job.media_id,
+                "subtitle_id": job.subtitle_id,
+                "pairing_id": job.pairing_id,
+                "old_hash": old_hash,
+                "new_hash": new_hash,
+            },
+        )
+
     except Exception as e:
         job.status = "failed"
         job.error_message = str(e)
         job.finished_at = datetime.now(timezone.utc)
         db.commit()
+
+        broadcast_event(
+            "hash_job_update",
+            {
+                "job_id": job.id,
+                "status": job.status,
+                "error_message": job.error_message,
+            },
+        )
 
 
 def worker_loop():

@@ -1,6 +1,8 @@
 # app/main.py
 
 from fastapi import FastAPI
+from fastapi.routing import APIRouter
+from app.api import ws
 from app.api.router import api_router
 
 app = FastAPI(
@@ -10,3 +12,4 @@ app = FastAPI(
 )
 
 app.include_router(api_router)
+app.include_router(ws.router)
