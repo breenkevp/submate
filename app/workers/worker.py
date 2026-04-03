@@ -24,7 +24,7 @@ POLL_INTERVAL_SECONDS = 2
 
 
 def process_sync_job(job: Job, db: Session):
-    from app.websockets.manager import manager  # local import avoids circulars
+    from app.websockets.events import broadcast_event  # local import avoids circulars
 
     job.status = "running"
     job.started_at = datetime.now(timezone.utc)
@@ -40,21 +40,14 @@ def process_sync_job(job: Job, db: Session):
             job.finished_at = datetime.now(timezone.utc)
             db.commit()
 
-            # Broadcast failure
-            try:
-                asyncio.create_task(
-                    manager.broadcast(
-                        {
-                            "type": "sync_job_update",
-                            "job_id": job.id,
-                            "status": job.status,
-                            "error_message": job.error_message,
-                        }
-                    )
-                )
-            except RuntimeError:
-                pass
-
+            broadcast_event(
+                "sync_job_update",
+                {
+                    "job_id": job.id,
+                    "status": job.status,
+                    "error_message": job.error_message,
+                },
+            )
             return
 
         # Run engine
@@ -81,22 +74,15 @@ def process_sync_job(job: Job, db: Session):
             job.finished_at = datetime.now(timezone.utc)
             db.commit()
 
-            # Broadcast failure
-            try:
-                asyncio.create_task(
-                    manager.broadcast(
-                        {
-                            "type": "sync_job_update",
-                            "job_id": job.id,
-                            "status": job.status,
-                            "engine_result_id": engine_result.id,
-                            "error_message": job.error_message,
-                        }
-                    )
-                )
-            except RuntimeError:
-                pass
-
+            broadcast_event(
+                "sync_job_update",
+                {
+                    "job_id": job.id,
+                    "status": job.status,
+                    "engine_result_id": engine_result.id,
+                    "error_message": job.error_message,
+                },
+            )
             return
 
         # Save sync output
@@ -123,25 +109,19 @@ def process_sync_job(job: Job, db: Session):
         job.finished_at = datetime.now(timezone.utc)
         db.commit()
 
-        # Broadcast success
-        try:
-            asyncio.create_task(
-                manager.broadcast(
-                    {
-                        "type": "sync_job_update",
-                        "job_id": job.id,
-                        "status": job.status,
-                        "media_id": job.media_id,
-                        "subtitle_id": job.subtitle_id,
-                        "pairing_id": job.pairing_id,
-                        "engine_result_id": job.engine_result_id,
-                        "confidence": result.confidence,
-                        "output_path": result.output_path,
-                    }
-                )
-            )
-        except RuntimeError:
-            pass
+        broadcast_event(
+            "sync_job_update",
+            {
+                "job_id": job.id,
+                "status": job.status,
+                "media_id": job.media_id,
+                "subtitle_id": job.subtitle_id,
+                "pairing_id": job.pairing_id,
+                "engine_result_id": job.engine_result_id,
+                "confidence": result.confidence,
+                "output_path": result.output_path,
+            },
+        )
 
     except Exception as e:
         job.status = "failed"
@@ -149,24 +129,18 @@ def process_sync_job(job: Job, db: Session):
         job.finished_at = datetime.now(timezone.utc)
         db.commit()
 
-        # Broadcast failure
-        try:
-            asyncio.create_task(
-                manager.broadcast(
-                    {
-                        "type": "sync_job_update",
-                        "job_id": job.id,
-                        "status": job.status,
-                        "error_message": job.error_message,
-                    }
-                )
-            )
-        except RuntimeError:
-            pass
+        broadcast_event(
+            "sync_job_update",
+            {
+                "job_id": job.id,
+                "status": job.status,
+                "error_message": job.error_message,
+            },
+        )
 
 
 def process_hash_job(job: Job, db: Session):
-    from app.websockets.manager import manager  # local import avoids circulars
+    from app.websockets.events import broadcast_event  # local import avoids circulars
 
     job.status = "running"
     job.started_at = datetime.now(timezone.utc)
@@ -181,21 +155,14 @@ def process_hash_job(job: Job, db: Session):
             job.finished_at = datetime.now(timezone.utc)
             db.commit()
 
-            # Broadcast failure
-            try:
-                asyncio.create_task(
-                    manager.broadcast(
-                        {
-                            "type": "hash_job_update",
-                            "job_id": job.id,
-                            "status": job.status,
-                            "error_message": job.error_message,
-                        }
-                    )
-                )
-            except RuntimeError:
-                pass
-
+            broadcast_event(
+                "hash_job_update",
+                {
+                    "job_id": job.id,
+                    "status": job.status,
+                    "error_message": job.error_message,
+                },
+            )
             return
 
         path = target.path
@@ -207,21 +174,14 @@ def process_hash_job(job: Job, db: Session):
             job.finished_at = datetime.now(timezone.utc)
             db.commit()
 
-            # Broadcast failure
-            try:
-                asyncio.create_task(
-                    manager.broadcast(
-                        {
-                            "type": "hash_job_update",
-                            "job_id": job.id,
-                            "status": job.status,
-                            "error_message": job.error_message,
-                        }
-                    )
-                )
-            except RuntimeError:
-                pass
-
+            broadcast_event(
+                "hash_job_update",
+                {
+                    "job_id": job.id,
+                    "status": job.status,
+                    "error_message": job.error_message,
+                },
+            )
             return
 
         old_hash = target.hash
@@ -271,24 +231,18 @@ def process_hash_job(job: Job, db: Session):
         job.finished_at = datetime.now(timezone.utc)
         db.commit()
 
-        # Broadcast success
-        try:
-            asyncio.create_task(
-                manager.broadcast(
-                    {
-                        "type": "hash_job_update",
-                        "job_id": job.id,
-                        "status": job.status,
-                        "media_id": job.media_id,
-                        "subtitle_id": job.subtitle_id,
-                        "pairing_id": job.pairing_id,
-                        "old_hash": old_hash,
-                        "new_hash": new_hash,
-                    }
-                )
-            )
-        except RuntimeError:
-            pass
+        broadcast_event(
+            "hash_job_update",
+            {
+                "job_id": job.id,
+                "status": job.status,
+                "media_id": job.media_id,
+                "subtitle_id": job.subtitle_id,
+                "pairing_id": job.pairing_id,
+                "old_hash": old_hash,
+                "new_hash": new_hash,
+            },
+        )
 
     except Exception as e:
         job.status = "failed"
@@ -296,20 +250,14 @@ def process_hash_job(job: Job, db: Session):
         job.finished_at = datetime.now(timezone.utc)
         db.commit()
 
-        # Broadcast failure
-        try:
-            asyncio.create_task(
-                manager.broadcast(
-                    {
-                        "type": "hash_job_update",
-                        "job_id": job.id,
-                        "status": job.status,
-                        "error_message": job.error_message,
-                    }
-                )
-            )
-        except RuntimeError:
-            pass
+        broadcast_event(
+            "hash_job_update",
+            {
+                "job_id": job.id,
+                "status": job.status,
+                "error_message": job.error_message,
+            },
+        )
 
 
 def worker_loop():
