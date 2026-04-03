@@ -1,6 +1,7 @@
 # app/workers/worker.py
 
 import os
+import asyncio
 from datetime import datetime, timezone
 from time import sleep
 
@@ -16,6 +17,7 @@ from app.db.models.pairings import Pairing
 from app.hashing.hashing import hash_file
 from app.engines.ffsubsync import run_best_engine
 from app.pairing.hash_audit import record_hash_audit
+from app.websockets.manager import manager
 
 
 POLL_INTERVAL_SECONDS = 2
@@ -131,19 +133,8 @@ def process_hash_job(job: Job, db: Session):
                 new_hash=new_hash,
             )
 
-        # Unexpected change
-        if old_hash is not None and new_hash is not None and old_hash != new_hash:
-            record_hash_audit(
-                db=db,
-                file_type="media" if job.media_id else "subtitle",
-                file_id=target.id,
-                event="unexpected_hash_change",
-                old_hash=old_hash,
-                new_hash=new_hash,
-            )
-
-        # Expected change (metadata changed, hash changed)
-        if old_hash and new_hash and old_hash != new_hash:
+        # Hash change (metadata changed or unexpected)
+        elif old_hash and new_hash and old_hash != new_hash:
             record_hash_audit(
                 db=db,
                 file_type="media" if job.media_id else "subtitle",
@@ -175,6 +166,26 @@ def process_hash_job(job: Job, db: Session):
         job.status = "completed"
         job.finished_at = datetime.now(timezone.utc)
         db.commit()
+
+        # Fire-and-forget broadcast to websocket
+        try:
+            asyncio.create_task(
+                manager.broadcast(
+                    {
+                        "type": "job_update",
+                        "job_id": job.id,
+                        "status": job.status,
+                        "media_id": job.media_id,
+                        "subtitle_id": job.subtitle_id,
+                        "pairing_id": job.pairing_id,
+                        "engine_result_id": job.engine_result_id,
+                        "error_message": job.error_message,
+                    }
+                )
+            )
+        except RuntimeError:
+            # If no running loop (e.g., worker in plain sync context), ignore
+            pass
 
     except Exception as e:
         job.status = "failed"
