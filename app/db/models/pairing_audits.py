@@ -14,7 +14,10 @@ class PairingAudit(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
 
     # Link to the pairing this audit entry refers to
-    pairing_id: Mapped[int] = mapped_column(ForeignKey("pairings.id"), nullable=False)
+    pairing_id: Mapped[int] = mapped_column(
+        ForeignKey("pairings.id"),
+        nullable=False,
+    )
     pairing: Mapped["Pairing"] = relationship(
         "Pairing",
         back_populates="audits",
@@ -35,5 +38,6 @@ class PairingAudit(Base):
 
     # Timestamp
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
     )
