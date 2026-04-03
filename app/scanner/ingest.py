@@ -1,7 +1,7 @@
 # app/scanner/ingest.py
 
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 from sqlalchemy.orm import Session
 
 from app.db.models.media_files import MediaFile
@@ -24,13 +24,10 @@ def ingest_media(path: str, db: Session) -> MediaFile:
 
         # File changed?
         if file_changed(path, existing):
-            # Enqueue a hash job instead of hashing inline
             enqueue_hash_job(db=db, media_id=existing.id)
-
-            # Duration may still need updating immediately
             existing.duration = get_media_duration(path)
 
-        existing.last_scanned_at = datetime.utcnow()
+        existing.last_scanned_at = datetime.now(timezone.utc)
         existing.exists_on_disk = True
         db.commit()
         db.refresh(existing)
@@ -41,14 +38,13 @@ def ingest_media(path: str, db: Session) -> MediaFile:
         path=path,
         hash=None,  # Let hash job fill this in
         duration=get_media_duration(path),
-        last_scanned_at=datetime.utcnow(),
+        last_scanned_at=datetime.now(timezone.utc),
         exists_on_disk=True,
     )
     db.add(media)
     db.commit()
     db.refresh(media)
 
-    # Enqueue hash job for new file
     enqueue_hash_job(db=db, media_id=media.id)
 
     return media
@@ -66,14 +62,11 @@ def ingest_subtitle(path: str, db: Session) -> SubtitleFile:
 
         # File changed?
         if file_changed(path, existing):
-            # Enqueue a hash job instead of hashing inline
             enqueue_hash_job(db=db, subtitle_id=existing.id)
-
-            # Update metadata that hashing doesn't handle
             existing.language = detect_language_from_filename(path)
             existing.duration = get_subtitle_duration(path)
 
-        existing.last_scanned_at = datetime.utcnow()
+        existing.last_scanned_at = datetime.now(timezone.utc)
         existing.exists_on_disk = True
         db.commit()
         db.refresh(existing)
@@ -85,14 +78,13 @@ def ingest_subtitle(path: str, db: Session) -> SubtitleFile:
         hash=None,  # Let hash job fill this in
         language=detect_language_from_filename(path),
         duration=get_subtitle_duration(path),
-        last_scanned_at=datetime.utcnow(),
+        last_scanned_at=datetime.now(timezone.utc),
         exists_on_disk=True,
     )
     db.add(sub)
     db.commit()
     db.refresh(sub)
 
-    # Enqueue hash job for new file
     enqueue_hash_job(db=db, subtitle_id=sub.id)
 
     return sub
