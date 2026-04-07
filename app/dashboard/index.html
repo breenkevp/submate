@@ -43,7 +43,7 @@
     </style>
 </head>
 
-<body>
+<scrip>
 
     <!-- NAVBAR -->
     <nav class="navbar navbar-dark bg-dark px-3">
@@ -140,7 +140,7 @@
             log.scrollTop = log.scrollHeight;
 
             // Publish to the event bus
-            <EventBus.publish(data.event_type, data);
+            EventBus.publish(data.event_type, data);
         };
 
         ws.onerror = (err) => {
@@ -148,6 +148,28 @@
         };
     </script>
 
-</body>
+
+    <script type="module">
+        import EventBus from "./eventBus.js";
+
+        const pairingsDiv = document.getElementById("pairings");
+
+        EventBus.subscribe("pairing_update", (data) => {
+            pairingsDiv.textContent = JSON.stringify(data, null, 2);
+        });
+    </script>
+
+    <script type="module">
+        import EventBus from "./eventBus.js";
+
+        const auditsDiv = document.getElementById("audits");
+
+        EventBus.subscribe("hash_audit", (data) => {
+            auditsDiv.textContent = JSON.stringify(data, null, 2);
+        });
+    </script>
+
+
+    </body>
 
 </html>
