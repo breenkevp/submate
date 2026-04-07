@@ -2,9 +2,9 @@
 
 import EventBus from "/dashboard/eventBus.js";
 
-const jobs = {}; // in-memory job store
-const ROW_ANIMATION_CLASS = "row-updated";
-const MAX_ANIMATION_MS = 600;
+const jobs = {}; 
+const FLASH_CLASS = "row-updated";
+const FLASH_MS = 600;
 
 function statusBadge(status) {
     const map = {
@@ -18,99 +18,76 @@ function statusBadge(status) {
 }
 
 function progressBar(progress) {
-    const value = typeof progress === "number" ? progress : 0;
-    const clamped = Math.max(0, Math.min(100, value));
+    const pct = Math.max(0, Math.min(100, progress || 0));
     return `
         <div class="progress" style="height: 8px;">
-            <div 
-                class="progress-bar" 
-                role="progressbar" 
-                style="width: ${clamped}%;"
-                aria-valuenow="${clamped}" 
-                aria-valuemin="0" 
-                aria-valuemax="100"
-                title="${clamped}% complete">
+            <div class="progress-bar" role="progressbar"
+                 style="width: ${pct}%;" 
+                 aria-valuenow="${pct}" aria-valuemin="0" aria-valuemax="100"
+                 title="${pct}% complete">
             </div>
         </div>
     `;
 }
 
 function formatTime(ts) {
-    if (!ts) return "-";
-    return new Date(ts).toLocaleTimeString();
+    return ts ? new Date(ts).toLocaleTimeString() : "-";
 }
 
-function getJobsTbody() {
+function tbody() {
     return document.getElementById("jobsBody");
 }
 
-function getOrCreateRow(jobId) {
-    const tbody = getJobsTbody();
-    let row = tbody.querySelector(`tr[data-job-id="${jobId}"]`);
+function getOrCreateRow(id) {
+    let row = tbody().querySelector(`tr[data-job-id="${id}"]`);
     if (!row) {
         row = document.createElement("tr");
-        row.dataset.jobId = jobId;
+        row.dataset.jobId = id;
         row.style.cursor = "pointer";
-        row.addEventListener("click", () => {
-            const job = jobs[jobId];
-            if (job) {
-                EventBus.publish("job_row_click", job);
-            }
-        });
-        tbody.appendChild(row);
+        row.addEventListener("click", () => EventBus.publish("job_row_click", jobs[id]));
+        tbody().appendChild(row);
     }
     return row;
 }
 
-function applyRowAnimation(row) {
-    row.classList.remove(ROW_ANIMATION_CLASS);
-    // force reflow to restart animation
-    // eslint-disable-next-line no-unused-expressions
+function flash(row) {
+    row.classList.remove(FLASH_CLASS);
     row.offsetWidth;
-    row.classList.add(ROW_ANIMATION_CLASS);
-    setTimeout(() => row.classList.remove(ROW_ANIMATION_CLASS), MAX_ANIMATION_MS);
+    row.classList.add(FLASH_CLASS);
+    setTimeout(() => row.classList.remove(FLASH_CLASS), FLASH_MS);
 }
 
-function renderJobRow(job) {
+function renderRow(job) {
     const row = getOrCreateRow(job.id);
     row.innerHTML = `
-        <td title="Job ID">${job.id}</td>
-        <td title="Job type">${job.job_type || "-"}</td>
+        <td>${job.id}</td>
+        <td title="Job type">${job.job_type}</td>
         <td>${statusBadge(job.status)}</td>
         <td>${progressBar(job.progress)}</td>
-        <td title="Last update">${formatTime(job.updated_at)}</td>
+        <td>${formatTime(job.updated_at)}</td>
     `;
-    applyRowAnimation(row);
+    flash(row);
 }
 
-function sortJobRows() {
-    const tbody = getJobsTbody();
-    const rows = Array.from(tbody.querySelectorAll("tr"));
+function sortRows() {
+    const rows = Array.from(tbody().querySelectorAll("tr"));
     rows.sort((a, b) => {
-        const aId = a.dataset.jobId;
-        const bId = b.dataset.jobId;
-        const aJob = jobs[aId];
-        const bJob = jobs[bId];
-        const aTs = aJob?.updated_at || 0;
-        const bTs = bJob?.updated_at || 0;
-        return bTs - aTs;
+        const ja = jobs[a.dataset.jobId]?.updated_at || 0;
+        const jb = jobs[b.dataset.jobId]?.updated_at || 0;
+        return jb - ja;
     });
-    rows.forEach(row => tbody.appendChild(row));
+    rows.forEach(r => tbody().appendChild(r));
 }
 
-// Subscribe to job updates
-EventBus.subscribe("job_update", (data) => {
-    const id = data.id;
-    if (!id) return;
-
-    jobs[id] = {
-        id,
-        job_type: data.job_type || data.type || "unknown",
+EventBus.subscribe("job_update", data => {
+    jobs[data.id] = {
+        id: data.id,
+        job_type: data.job_type || "unknown",
         status: data.status || "queued",
-        progress: typeof data.progress === "number" ? data.progress : 0,
+        progress: data.progress || 0,
         updated_at: data.updated_at || Date.now()
     };
 
-    renderJobRow(jobs[id]);
-    sortJobRows();
+    renderRow(jobs[data.id]);
+    sortRows();
 });
