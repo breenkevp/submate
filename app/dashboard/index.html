@@ -122,7 +122,9 @@
         </div>
     </div>
 
-    <script>
+    <script type="module">
+        import EventBus from "./eventBus.js";
+
         const log = document.getElementById("log");
         const ws = new WebSocket("ws://localhost:9090/ws/events");
 
@@ -132,8 +134,13 @@
 
         ws.onmessage = (event) => {
             const data = JSON.parse(event.data);
+
+            // Pretty-print to the log panel
             log.textContent += JSON.stringify(data, null, 2) + "\n\n";
             log.scrollTop = log.scrollHeight;
+
+            // Publish to the event bus
+            <EventBus.publish(data.event_type, data);
         };
 
         ws.onerror = (err) => {
