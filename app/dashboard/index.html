@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <title>SubMate Dashboard</title>
+
+    <!-- Bootstrap (active for plumbing) -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" />
+
+    <!-- Tailwind (commented out for later) -->
+    <!-- <script src="https://cdn.tailwindcss.com"></script> -->
+
+    <style>
+        body {
+            background: #111;
+            color: #eee;
+        }
+
+        #sidebar {
+            background: #1a1a1a;
+            min-height: 100vh;
+            padding-top: 20px;
+        }
+
+        #log {
+            white-space: pre-wrap;
+            background: #222;
+            padding: 10px;
+            border-radius: 6px;
+            font-family: monospace;
+            max-height: 40vh;
+            overflow-y: auto;
+        }
+
+        .panel {
+            background: #1a1a1a;
+            border-radius: 6px;
+            padding: 15px;
+            height: 300px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- NAVBAR -->
+    <nav class="navbar navbar-dark bg-dark px-3">
+        <a class="navbar-brand" href="#">SubMate</a>
+        <span class="navbar-text text-light">Real‑Time Dashboard</span>
+    </nav>
+
+    <div class="container-fluid">
+        <div class="row">
+
+            <!-- SIDEBAR -->
+            <div class="col-md-2 col-lg-2 d-none d-md-block" id="sidebar">
+                <h5 class="text-light mb-3 px-3">Navigation</h5>
+                <ul class="nav flex-column px-2">
+                    <li class="nav-item">
+                        <a class="nav-link text-light" href="#">Dashboard</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link text-light" href="#">Jobs</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link text-light" href="#">Pairings</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link text-light" href="#">Audits</a>
+                    </li>
+                </ul>
+            </div>
+
+            <!-- MAIN CONTENT -->
+            <div class="col-md-10 col-lg-10 p-4">
+
+                <h1 class="mb-4">SubMate Dashboard</h1>
+
+                <!-- Row 1: Live Event Stream -->
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <div class="card bg-dark text-light">
+                            <div class="card-header">
+                                WebSocket Event Stream
+                            </div>
+                            <div class="card-body">
+                                <div id="log">Connecting...</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Row 2: Three-Panel Grid -->
+                <div class="row g-4">
+
+                    <!-- JOB QUEUE PANEL -->
+                    <div class="col-md-4">
+                        <div class="panel">
+                            <h4>Job Queue</h4>
+
+                            <table class="table table-dark table-striped table-sm" id="jobsTable">
+                                <thead>
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>Type</th>
+                                        <th>Status</th>
+                                        <th>Progress</th>
+                                        <th>Updated</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="jobsBody">
+                                    <!-- Rows injected here -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- PAIRINGS PANEL -->
+                    <div class="col-md-4">
+                        <div class="panel">
+                            <h4>Pairings</h4>
+
+                            <table class="table table-dark table-striped table-sm" id="pairingsTable">
+                                <thead>
+                                    <tr>
+                                        <th>Media</th>
+                                        <th>Subtitle</th>
+                                        <th>Confidence</th>
+                                        <th>Engine</th>
+                                        <th>Updated</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="pairingsBody">
+                                    <!-- Rows injected here -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- HASH AUDITS PANEL -->
+                    <div class="col-md-4">
+                        <div class="panel">
+                            <h4>Hash Audits</h4>
+
+                            <table class="table table-dark table-striped table-sm" id="auditsTable">
+                                <thead>
+                                    <tr>
+                                        <th>File</th>
+                                        <th>Old Hash</th>
+                                        <th>New Hash</th>
+                                        <th>Status</th>
+                                        <th>Time</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="auditsBody">
+                                    <!-- Rows injected here -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+    </div>
+
+    <!-- WEBSOCKET + EVENT BUS -->
+    <script type="module">
+        import EventBus from "/dashboard/eventBus.js";
+
+        const log = document.getElementById("log");
+        const ws = new WebSocket("ws://localhost:9090/ws/events");
+
+        ws.onopen = () => {
+            log.textContent = "Connected to SubMate WebSocket\n";
+        };
+
+        ws.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+
+            log.textContent += JSON.stringify(data, null, 2) + "\n\n";
+            log.scrollTop = log.scrollHeight;
+
+            EventBus.publish(data.event_type, data);
+        };
+
+        ws.onerror = (err) => {
+            log.textContent += "WebSocket error: " + err + "\n";
+        };
+    </script>
+
+    <!-- MODULES -->
+    <script type="module" src="/dashboard/jobs.js"></script>
+    <script type="module" src="/dashboard/pairings.js"></script>
+    <script type="module" src="/dashboard/audits.js"></script>
+
+</body>
+
+</html>

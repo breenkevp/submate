@@ -21,7 +21,10 @@
     }
   },
   "mounts": [
-    "type=bind,source=/mnt/media/data,target=/mnt/media/data"
+    "type=bind,source=/mnt/media/data,target=/media/data"
+  ],
+  "forwardPorts": [
+    9090
   ],
   "postCreateCommand": "pip install --no-cache-dir -r requirements.txt"
 }
