@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <title>SubMate Dashboard</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            background: #111;
+            color: #eee;
+            padding: 20px;
+        }
+
+        #log {
+            white-space: pre-wrap;
+            background: #222;
+            padding: 10px;
+            border-radius: 6px;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>SubMate Live Events</h1>
+    <div id="log">Connecting...</div>
+
+    <script>
+        const log = document.getElementById("log");
+        const ws = new WebSocket("ws://localhost:9090/ws/events");
+
+        ws.onopen = () => {
+            log.textContent = "Connected to SubMate WebSocket\n";
+        };
+
+        ws.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+            log.textContent += JSON.stringify(data, null, 2) + "\n\n";
+        };
+
+        ws.onerror = (err) => {
+            log.textContent += "WebSocket error: " + err + "\n";
+        };
+    </script>
+</body>
+
+</html>
