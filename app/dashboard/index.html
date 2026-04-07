@@ -15,7 +15,12 @@
         body {
             background: #111;
             color: #eee;
-            padding: 20px;
+        }
+
+        #sidebar {
+            background: #1a1a1a;
+            min-height: 100vh;
+            padding-top: 20px;
         }
 
         #log {
@@ -39,50 +44,82 @@
 </head>
 
 <body>
+
+    <!-- NAVBAR -->
+    <nav class="navbar navbar-dark bg-dark px-3">
+        <a class="navbar-brand" href="#">SubMate</a>
+        <span class="navbar-text text-light">Real‑Time Dashboard</span>
+    </nav>
+
     <div class="container-fluid">
+        <div class="row">
 
-        <h1 class="mb-4">SubMate Dashboard</h1>
+            <!-- SIDEBAR -->
+            <div class="col-md-2 col-lg-2 d-none d-md-block" id="sidebar">
+                <h5 class="text-light mb-3 px-3">Navigation</h5>
+                <ul class="nav flex-column px-2">
+                    <li class="nav-item">
+                        <a class="nav-link text-light" href="#">Dashboard</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link text-light" href="#">Jobs</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link text-light" href="#">Pairings</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link text-light" href="#">Audits</a>
+                    </li>
+                </ul>
+            </div>
 
-        <!-- Row 1: Live Event Stream -->
-        <div class="row mb-4">
-            <div class="col-12">
-                <div class="card bg-dark text-light">
-                    <div class="card-header">
-                        WebSocket Event Stream
-                    </div>
-                    <div class="card-body">
-                        <div id="log">Connecting...</div>
+            <!-- MAIN CONTENT -->
+            <div class="col-md-10 col-lg-10 p-4">
+
+                <h1 class="mb-4">SubMate Dashboard</h1>
+
+                <!-- Row 1: Live Event Stream -->
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <div class="card bg-dark text-light">
+                            <div class="card-header">
+                                WebSocket Event Stream
+                            </div>
+                            <div class="card-body">
+                                <div id="log">Connecting...</div>
+                            </div>
+                        </div>
                     </div>
                 </div>
+
+                <!-- Row 2: Three-Panel Grid -->
+                <div class="row g-4">
+
+                    <div class="col-md-4">
+                        <div class="panel">
+                            <h4>Job Queue</h4>
+                            <div id="jobs">No data yet...</div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-4">
+                        <div class="panel">
+                            <h4>Pairings</h4>
+                            <div id="pairings">No data yet...</div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-4">
+                        <div class="panel">
+                            <h4>Hash Audits</h4>
+                            <div id="audits">No data yet...</div>
+                        </div>
+                    </div>
+
+                </div>
+
             </div>
         </div>
-
-        <!-- Row 2: Three-Panel Grid -->
-        <div class="row g-4">
-
-            <div class="col-md-4">
-                <div class="panel">
-                    <h4>Job Queue</h4>
-                    <div id="jobs">No data yet...</div>
-                </div>
-            </div>
-
-            <div class="col-md-4">
-                <div class="panel">
-                    <h4>Pairings</h4>
-                    <div id="pairings">No data yet...</div>
-                </div>
-            </div>
-
-            <div class="col-md-4">
-                <div class="panel">
-                    <h4>Hash Audits</h4>
-                    <div id="audits">No data yet...</div>
-                </div>
-            </div>
-
-        </div>
-
     </div>
 
     <script>
