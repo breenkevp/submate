@@ -96,30 +96,45 @@
                 <div class="row g-4">
 
                     <div class="col-md-4">
-                        <div class="panel">
+                        < class="panel">
                             <h4>Job Queue</h4>
-                            <div id="jobs">No data yet...</div>
-                        </div>
-                    </div>
+                            <div class="panel">
+                                <h4>Job Queue</h4>
 
-                    <div class="col-md-4">
-                        <div class="panel">
-                            <h4>Pairings</h4>
-                            <div id="pairings">No data yet...</div>
-                        </div>
+                                <table class="table table-dark table-striped table-sm" id="jobsTable" <thead>
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>Type</th>
+                                        <th>Status</th>
+                                        <th>Progress</th>
+                                        <th>Updated</th>
+                                    </tr>
+                                    </thead>
+                                    <tbody id="jobsBody">
+                                        <!-- Rows will be injected here -->
+                                    </tbody>
+                            </div>
                     </div>
+                </div>
 
-                    <div class="col-md-4">
-                        <div class="panel">
-                            <h4>Hash Audits</h4>
-                            <div id="audits">No data yet...</div>
-                        </div>
+                <div class="col-md-4">
+                    <div class="panel">
+                        <h4>Pairings</h4>
+                        <div id="pairings">No data yet...</div>
                     </div>
+                </div>
 
+                <div class="col-md-4">
+                    <div class="panel">
+                        <h4>Hash Audits</h4>
+                        <div id="audits">No data yet...</div>
+                    </div>
                 </div>
 
             </div>
+
         </div>
+    </div>
     </div>
 
     <!-- WEBSOCKET + EVENT BUS -->
@@ -148,6 +163,8 @@
             log.textContent += "WebSocket error: " + err + "\n";
         };
     </script>
+    <script type="module" src="/dashboard/jobs.js"></script>
+
 
     <!-- PAIRINGS PANEL -->
     <script type="module">
