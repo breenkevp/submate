@@ -22,7 +22,7 @@
   },
   "mounts": [
     "type=bind,source=/mnt/media/data,target=/media",
-    "type=bind,source=${localWorkspaceFolder},target=/workspace,uid=1000,gid=1000"
+    "type=bind,source=${localWorkspaceFolder},target=/workspace"
   ],
   "forwardPorts": [
     9090
