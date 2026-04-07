@@ -34,7 +34,6 @@ class ConnectionManager:
                 if ws in self.active_connections:
                     self.active_connections.remove(ws)
 
-    # ⭐ NEW: sync-safe wrapper for workers
     def broadcast_sync(self, message: dict):
         """
         Safe to call from synchronous worker code.
@@ -46,10 +45,8 @@ class ConnectionManager:
             loop = None
 
         if loop and loop.is_running():
-            # Running inside FastAPI event loop
             loop.create_task(self.broadcast(message))
         else:
-            # Running in a worker thread/process
             asyncio.run(self.broadcast(message))
 
 

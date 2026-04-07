@@ -19,7 +19,6 @@ def normalize_path(path: str) -> str:
     host_root = os.getenv("MEDIA_SHARE", "/mnt/media")
     container_root = os.getenv("MEDIA_ROOT", "/media")
 
-    # Ensure trailing slash consistency
     if not host_root.endswith("/"):
         host_root += "/"
     if not container_root.endswith("/"):
