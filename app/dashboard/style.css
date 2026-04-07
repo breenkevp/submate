@@ -1,0 +1,14 @@
+/* Flash animation when a row updates */
+.row-updated {
+    animation: flash-bg 0.6s ease-out;
+}
+
+@keyframes flash-bg {
+    0% {
+        background-color: rgba(255, 255, 0, 0.4);
+    }
+
+    100% {
+        background-color: transparent;
+    }
+}
