@@ -12,3 +12,24 @@
         background-color: transparent;
     }
 }
+
+/* Right-side details panel helpers */
+#detailsPanel .card-body {
+    min-height: 300px;
+}
+
+.details-logs {
+    max-height: 200px;
+    overflow-y: auto;
+    font-family: monospace;
+    font-size: 0.8rem;
+    white-space: pre-wrap;
+}
+
+.details-json {
+    max-height: 200px;
+    overflow-y: auto;
+    font-family: monospace;
+    font-size: 0.8rem;
+    white-space: pre-wrap;
+}
