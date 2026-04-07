@@ -1,0 +1,21 @@
+version: "3.9"
+
+services:
+  submate:
+    image: submate:latest
+    container_name: submate
+    restart: unless-stopped
+
+    environment:
+      PUID: ${PUID}
+      PGID: ${PGID}
+      TZ: ${TZ}
+      MEDIA_SHARE: ${MEDIA_SHARE}
+
+    volumes:
+      - ${MEDIA_SHARE}:/media
+      - ./data:/app/data
+      - ./config:/app/config
+
+    ports:
+      - "9090:9090"
