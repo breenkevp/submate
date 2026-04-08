@@ -1,3 +1,4 @@
+/* app/dashboard/style.css */
 /* Flash animation when a row updates */
 .row-updated {
     animation: flash-bg 0.6s ease-out;

@@ -248,7 +248,7 @@
         import EventBus from "/dashboard/eventBus.js";
 
         const log = document.getElementById("log");
-        const ws = new WebSocket("ws://localhost:9090/ws/events");
+        const ws = new WebSocket(`ws://${location.host}/ws`);
 
         ws.onopen = () => {
             log.textContent = "Connected to SubMate WebSocket\n";
