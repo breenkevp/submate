@@ -215,6 +215,11 @@ function init() {
     EventBus.subscribe("audit_row_click", audit => {
         selectItem("audit", audit);
     });
+
+    EventBus.subscribe("media_row_click", media => {
+    selectItem("media", media);
+});
+
 }
 
 document.addEventListener("DOMContentLoaded", init);
