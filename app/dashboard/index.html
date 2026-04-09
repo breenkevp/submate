@@ -244,7 +244,7 @@
         const log = document.getElementById("log");
 
         // Correct WebSocket path
-        const ws = new WebSocket(`ws://${location.host}/ws`);
+        const ws = new WebSocket(`ws://${location.host}/ws/events`);
 
         ws.onopen = () => {
             log.textContent = "Connected to SubMate WebSocket\n";
