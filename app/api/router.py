@@ -12,4 +12,4 @@ api_router.include_router(audits.router, prefix="/audits", tags=["Audits"])
 api_router.include_router(jobs.router, prefix="/jobs", tags=["Jobs"])
 api_router.include_router(scan.router, prefix="/scan", tags=["Scan"])
 # WebSocket routes are mounted directly on app in main.py, see below
-api_router.include_router(ws.router, prefix="/ws", tags=["WebSocket"])
+api_router.include_router(ws.router, tags=["WebSocket"])

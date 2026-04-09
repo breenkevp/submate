@@ -17,19 +17,14 @@ def scan(root: str, db: Session):
     media_files = []
     subtitle_files = []
 
-    # First pass: ingest everything
     for path in walk_directory(root):
         file_type = classify_file(path)
 
         if file_type == "media":
-            media = ingest_media(path, db)
-            media_files.append(media)
-
+            media_files.append(ingest_media(path, db))
         elif file_type == "subtitle":
-            sub = ingest_subtitle(path, db)
-            subtitle_files.append(sub)
+            subtitle_files.append(ingest_subtitle(path, db))
 
-    # Second pass: create pairings + enqueue jobs
     for media in media_files:
         scored_subs = []
 
@@ -39,10 +34,8 @@ def scan(root: str, db: Session):
                 "accepted" if scores["final_score"] >= PAIRING_THRESHOLD else "rejected"
             )
 
-            # Create or fetch pairing
             pairing = get_or_create_pairing(media.id, sub.id, db)
 
-            # Always record audit
             record_pairing_audit(
                 db=db,
                 pairing_id=pairing.id,
@@ -52,7 +45,6 @@ def scan(root: str, db: Session):
 
             scored_subs.append((sub, scores))
 
-        # Pick the best subtitle for this media
         if not scored_subs:
             continue
 
@@ -60,9 +52,7 @@ def scan(root: str, db: Session):
             scored_subs, key=lambda item: item[1]["final_score"]
         )
 
-    # Only enqueue if the best score is acceptable
-    if best_scores["final_score"] >= 0.5:
-        enqueue_sync_job(media.id, best_sub.id, db)
+        if best_scores["final_score"] >= PAIRING_THRESHOLD:
+            enqueue_sync_job(media.id, best_sub.id, db)
 
-    # Final pass: mark deleted files
     mark_deleted_files(db)

@@ -1,8 +1,9 @@
 # app/websockets/manager.py
 
-from typing import Dict, List
+from typing import List
 from fastapi import WebSocket
 from asyncio import Lock
+import asyncio
 
 
 class ConnectionManager:
@@ -32,6 +33,21 @@ class ConnectionManager:
             for ws in to_remove:
                 if ws in self.active_connections:
                     self.active_connections.remove(ws)
+
+    def broadcast_sync(self, message: dict):
+        """
+        Safe to call from synchronous worker code.
+        Detects whether an event loop is running and handles accordingly.
+        """
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            loop = None
+
+        if loop and loop.is_running():
+            loop.create_task(self.broadcast(message))
+        else:
+            asyncio.run(self.broadcast(message))
 
 
 manager = ConnectionManager()
