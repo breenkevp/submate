@@ -57,5 +57,5 @@ def stop_worker():
 
 @router.post("/api/run-scan")
 def run_scan():
-    subprocess.Popen(["curl", "-X", "POST", "http://localhost:9090/api/scan"])
+    requests.post("http://localhost:9090/api/scan")
     return {"status": "scan_triggered"}
