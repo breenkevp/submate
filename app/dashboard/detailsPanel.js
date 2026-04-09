@@ -66,6 +66,12 @@ function renderMetadata() {
             <dt class="col-4">Status</dt><dd class="col-8">${currentItem.status}</dd>
             <dt class="col-4">Time</dt><dd class="col-8">${formatTimestamp(currentItem.timestamp)}</dd>
         `;
+    } else if (currentType === "media") {
+        html += `
+            <dt class="col-4">File</dt><dd class="col-8">${currentItem.name}</dd>
+            <dt class="col-4">Directory</dt><dd class="col-8">${currentItem.dir}</dd>
+            <dt class="col-4">Path</dt><dd class="col-8">${currentItem.path}</dd>
+        `;
     }
 
     html += "</dl>";
@@ -153,6 +159,10 @@ function setTitleAndSubtitle() {
     } else if (currentType === "audit") {
         setText("detailsTitle", "Audit details");
         setText("detailsSubtitle", currentItem.file || "");
+    } else if (currentType === "media") {
+        setText("detailsTitle", "Media details");
+        setText("detailsSubtitle", currentItem.name || "");
+
     }
 }
 
@@ -215,6 +225,11 @@ function init() {
     EventBus.subscribe("audit_row_click", audit => {
         selectItem("audit", audit);
     });
+
+    EventBus.subscribe("media_row_click", media => {
+    selectItem("media", media);
+});
+
 }
 
 document.addEventListener("DOMContentLoaded", init);

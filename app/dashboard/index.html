@@ -82,18 +82,10 @@
             <div class="col-md-2 col-lg-2 d-none d-md-block" id="sidebar">
                 <h5 class="text-light mb-3 px-3">Navigation</h5>
                 <ul class="nav flex-column px-2">
-                    <li class="nav-item">
-                        <a class="nav-link text-light" href="#">Dashboard</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link text-light" href="#">Jobs</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link text-light" href="#">Pairings</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link text-light" href="#">Audits</a>
-                    </li>
+                    <li class="nav-item"><a class="nav-link text-light" href="#">Dashboard</a></li>
+                    <li class="nav-item"><a class="nav-link text-light" href="#">Jobs</a></li>
+                    <li class="nav-item"><a class="nav-link text-light" href="#">Pairings</a></li>
+                    <li class="nav-item"><a class="nav-link text-light" href="#">Audits</a></li>
                 </ul>
             </div>
 
@@ -113,13 +105,11 @@
                             <button id="btnStopWorker" class="btn btn-danger btn-sm">Panic Stop</button>
                         </div>
 
-                        <!-- Row 1: Live Event Stream -->
+                        <!-- WEBSOCKET EVENT STREAM -->
                         <div class="row mb-4">
                             <div class="col-12">
                                 <div class="card bg-dark text-light">
-                                    <div class="card-header">
-                                        WebSocket Event Stream
-                                    </div>
+                                    <div class="card-header">WebSocket Event Stream</div>
                                     <div class="card-body">
                                         <div id="log">Connecting...</div>
                                     </div>
@@ -127,14 +117,21 @@
                             </div>
                         </div>
 
-                        <!-- Row 2: Three-Panel Grid -->
+                        <!-- FOUR-PANEL GRID (Media + Jobs + Pairings + Audits) -->
                         <div class="row g-4">
 
+                            <!-- MEDIA BROWSER PANEL -->
+                            <div class="col-md-6">
+                                <div class="panel">
+                                    <h4>Media Browser</h4>
+                                    <ul id="mediaList" class="list-group list-group-flush"></ul>
+                                </div>
+                            </div>
+
                             <!-- JOB QUEUE PANEL -->
-                            <div class="col-md-4">
+                            <div class="col-md-6">
                                 <div class="panel">
                                     <h4>Job Queue</h4>
-
                                     <table class="table table-dark table-striped table-sm" id="jobsTable">
                                         <thead>
                                             <tr>
@@ -151,10 +148,9 @@
                             </div>
 
                             <!-- PAIRINGS PANEL -->
-                            <div class="col-md-4">
+                            <div class="col-md-6">
                                 <div class="panel">
                                     <h4>Pairings</h4>
-
                                     <table class="table table-dark table-striped table-sm" id="pairingsTable">
                                         <thead>
                                             <tr>
@@ -171,10 +167,9 @@
                             </div>
 
                             <!-- HASH AUDITS PANEL -->
-                            <div class="col-md-4">
+                            <div class="col-md-6">
                                 <div class="panel">
                                     <h4>Hash Audits</h4>
-
                                     <table class="table table-dark table-striped table-sm" id="auditsTable">
                                         <thead>
                                             <tr>
@@ -243,7 +238,6 @@
 
         const log = document.getElementById("log");
 
-        // Correct WebSocket path
         const ws = new WebSocket(`ws://${location.host}/ws/events`);
 
         ws.onopen = () => {
@@ -252,10 +246,8 @@
 
         ws.onmessage = (event) => {
             const data = JSON.parse(event.data);
-
             log.textContent += JSON.stringify(data, null, 2) + "\n\n";
             log.scrollTop = log.scrollHeight;
-
             EventBus.publish(data.event_type, data);
         };
 
@@ -281,6 +273,7 @@
     </script>
 
     <!-- MODULES -->
+    <script type="module" src="/dashboard/mediaBrowser.js"></script>
     <script type="module" src="/dashboard/jobs.js"></script>
     <script type="module" src="/dashboard/pairings.js"></script>
     <script type="module" src="/dashboard/audits.js"></script>
