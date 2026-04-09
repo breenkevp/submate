@@ -38,7 +38,6 @@
             overflow-y: auto;
         }
 
-        /* Flash animation for updated rows */
         .row-updated {
             animation: flash-bg 0.6s ease-out;
         }
@@ -53,19 +52,11 @@
             }
         }
 
-        /* Details panel helpers */
         #detailsPanel .card-body {
             min-height: 300px;
         }
 
-        .details-logs {
-            max-height: 200px;
-            overflow-y: auto;
-            font-family: monospace;
-            font-size: 0.8rem;
-            white-space: pre-wrap;
-        }
-
+        .details-logs,
         .details-json {
             max-height: 200px;
             overflow-y: auto;
@@ -114,6 +105,13 @@
                     <div class="col-md-8">
 
                         <h1 class="mb-4">SubMate Dashboard</h1>
+
+                        <!-- CONTROL BUTTONS -->
+                        <div class="mb-4">
+                            <button id="btnStartWorker" class="btn btn-success btn-sm me-2">Start Worker</button>
+                            <button id="btnRunScan" class="btn btn-primary btn-sm me-2">Run Scan</button>
+                            <button id="btnStopWorker" class="btn btn-danger btn-sm">Panic Stop</button>
+                        </div>
 
                         <!-- Row 1: Live Event Stream -->
                         <div class="row mb-4">
@@ -205,15 +203,12 @@
 
                             <div class="card-body d-flex flex-column">
 
-                                <!-- Metadata -->
                                 <div id="detailsMetadata" class="mb-3 small text-light">
                                     <span class="text-muted">Select a row to see details.</span>
                                 </div>
 
-                                <!-- Engine info -->
                                 <div id="detailsEngine" class="mb-3 small text-light"></div>
 
-                                <!-- Logs toggle -->
                                 <div class="mb-3">
                                     <button id="detailsLogsToggle" class="btn btn-sm btn-outline-secondary mb-2">
                                         Show logs
@@ -223,7 +218,6 @@
                                         style="display: none;"></div>
                                 </div>
 
-                                <!-- Raw JSON -->
                                 <div class="mt-auto">
                                     <button id="detailsJsonToggle" class="btn btn-sm btn-outline-secondary mb-2">
                                         Show raw JSON
@@ -248,6 +242,8 @@
         import EventBus from "/dashboard/eventBus.js";
 
         const log = document.getElementById("log");
+
+        // Correct WebSocket path
         const ws = new WebSocket(`ws://${location.host}/ws`);
 
         ws.onopen = () => {
@@ -265,6 +261,22 @@
 
         ws.onerror = (err) => {
             log.textContent += "WebSocket error: " + err + "\n";
+        };
+
+        // Button actions
+        document.getElementById("btnStartWorker").onclick = async () => {
+            await fetch("/api/start-worker", { method: "POST" });
+            log.textContent += "Worker started\n";
+        };
+
+        document.getElementById("btnRunScan").onclick = async () => {
+            await fetch("/api/run-scan", { method: "POST" });
+            log.textContent += "Scan triggered\n";
+        };
+
+        document.getElementById("btnStopWorker").onclick = async () => {
+            await fetch("/api/stop-worker", { method: "POST" });
+            log.textContent += "Worker stopped\n";
         };
     </script>
 
